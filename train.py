@@ -1,33 +1,33 @@
 from utils import utils
 from utils import config
-from data.dataloader import ClassificationDataset
-from data.data_transformer import transform_data
+from data.dataloader import create_dataloader
+from data.data_transformer import train_transformer, val_transformer, test_transformer
 
 import os
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-import torch.utils.data as data
 
 
-# Setup
+# Setup CPU/GPU
 device = utils.setup_gpu()
 
 # Data Paths
 image_directory = os.path.join(os. getcwd(), 'data', 'images')
-csv_file = os.path.join(os. getcwd(), 'data', 'filenames.csv')
-# ToDo: train/validation split --> data.random_split(); test split
+train_file = os.path.join(os. getcwd(), 'data', 'train_set.csv')
+validation_file = os.path.join(os. getcwd(), 'data', 'val_set.csv')
+test_file = os.path.join(os. getcwd(), 'data', 'test_set.csv')
 
 
-# Data Transformations
-composed = transform_data()
-# ToDo: which augementation for training (but not validation set?) - adds images?;
+# ToDo: which augementation for training (but not validation set?);
 #  calculate mean/std on dataset for normalisation OR pretrained means OR same size and norm as pretrained?
 
 # Data Loading
-dataset = ClassificationDataset(images_csv=csv_file, image_dir=image_directory, transform=composed)
-trainloader = DataLoader(dataset=dataset, batch_size=config.BATCH_SIZE, shuffle=True)
-# ToDo: validation loader and combine in dict
+trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, transform=train_transformer(),
+                                batch_size=config.BATCH_SIZE, shuffle=True)
+valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, transform=val_transformer(),
+                              batch_size=config.BATCH_SIZE, shuffle=True)
+testloader = create_dataloader(images_csv=test_file, image_dir=image_directory, transform=test_transformer())
+dataloader = {"train": trainloader, "val": valloader, "test": testloader}
 
 # Training
 criterion = nn.CrossEntropyLoss()

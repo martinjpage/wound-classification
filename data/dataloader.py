@@ -3,7 +3,7 @@ from utils import config as const
 
 import os
 from PIL import Image
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 
 
 class ClassificationDataset(Dataset):
@@ -38,3 +38,9 @@ class ClassificationDataset(Dataset):
         if self.transform:
             img = self.transform(img)
         return img, y
+
+
+def create_dataloader(images_csv: str, image_dir: str, transform=None, batch_size=1, shuffle=False):
+    dataset = ClassificationDataset(images_csv=images_csv, image_dir=image_dir, transform=transform)
+    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+    return dataloader

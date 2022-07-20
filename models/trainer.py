@@ -2,7 +2,7 @@ import copy
 import torch
 
 
-def train_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs):
+def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs):
     since = time.time()
 
     model = model.to(device)

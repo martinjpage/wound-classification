@@ -3,7 +3,6 @@ from utils import config as const
 import os
 import torch
 import pandas as pd
-from pathlib import Path
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
@@ -11,7 +10,9 @@ from sklearn.model_selection import train_test_split
 def get_image_filenames(image_directory, csv_output):
     image_files = os.listdir(image_directory)
     df = pd.DataFrame(image_files, columns=[const.CSV_FILENAME_COLUMN])
+    df[const.CSV_CLOT_COLUMN] = ""
     df.to_csv(csv_output, index=False)
+    print("Image file names written to file")
 
 
 def load_image_filenames(path):
@@ -30,8 +31,10 @@ def create_data_split(path, train_size=0.8, valid_size=0.1, test_size=0.1):
     X_all = df[const.CSV_FILENAME_COLUMN]
     y_all = df[const.CSV_CLOT_COLUMN]
 
-    x_train_val, x_test, y_train_val, y_test = train_test_split(X_all, y_all, test_size=test_size, stratify=y_all, random_state=123)
-    x_train, x_val, y_train, y_val = train_test_split(x_train_val, y_train_val, train_size=train_size, stratify=y_train_val, random_state=123)
+    x_train_val, x_test, y_train_val, y_test = train_test_split(X_all, y_all, test_size=test_size,
+                                                                stratify=y_all, random_state=123)
+    x_train, x_val, y_train, y_val = train_test_split(x_train_val, y_train_val, train_size=train_size,
+                                                      stratify=y_train_val, random_state=123)
 
     train_set = x_train.to_frame().join(y_train)
     val_set = x_val.to_frame().join(y_val)
@@ -41,9 +44,9 @@ def create_data_split(path, train_size=0.8, valid_size=0.1, test_size=0.1):
           f"val: {len(x_val)}' test: {len(x_test)})")
 
     parent_folder = os.path.dirname(path)
-    train_set.to_csv(os.path.join(parent_folder, "train_set.csv"), index=False)
-    val_set.to_csv(os.path.join(parent_folder, "val_set.csv"), index=False)
-    test_set.to_csv(os.path.join(parent_folder, "test_set.csv"), index=False)
+    train_set.to_csv(os.path.join(parent_folder, 'train_set.csv'), index=False)
+    val_set.to_csv(os.path.join(parent_folder, 'val_set.csv'), index=False)
+    test_set.to_csv(os.path.join(parent_folder, 'test_set.csv'), index=False)
     print("Completed data split.")
 
 
