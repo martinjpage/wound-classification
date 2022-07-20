@@ -1,5 +1,55 @@
+from utils import config
+
 import copy
 import torch
+from torch.optim.lr_scheduler import OneCycleLR
+
+
+def create_scheduler(trainloader, optimiser):
+    STEPS_PER_EPOCH = len(trainloader)
+    TOTAL_STEPS = config.EPOCHS * STEPS_PER_EPOCH
+    MAX_LRS = [p['lr'] for p in optimiser.param_groups]
+    return OneCycleLR(optimiser, max_lr=MAX_LRS, total_steps=TOTAL_STEPS)
+
+
+def train(train_loader, model, optimiser, criterion, scheduler, device):
+    epoch_loss = 0
+    epoch_acc = 0
+
+    model.train() # Set model to training mode
+
+    # Iterate over data
+    for inputs, labels in train_loader:
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        # zero the parameter gradients
+        optimiser.zero_grad()
+
+        # forward
+        outputs = model(inputs)
+        _, preds = torch.max(outputs, 1)
+        y_pred, _ = model(x)
+
+        loss = criterion(y_pred, y)
+
+        acc_1, acc_5 = calculate_topk_accuracy(y_pred, y)
+
+        loss.backward()
+
+        optimiser.step()
+
+        scheduler.step()
+
+        epoch_loss += loss.item()
+        epoch_acc_1 += acc_1.item()
+        epoch_acc_5 += acc_5.item()
+
+    epoch_loss /= len(dataloaders)
+    epoch_acc_1 /= len(dataloaders)
+    epoch_acc_5 /= len(dataloaders)
+
+    return epoch_loss, epoch_acc_1, epoch_acc_5
 
 
 def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs):

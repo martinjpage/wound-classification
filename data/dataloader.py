@@ -33,6 +33,8 @@ class ClassificationDataset(Dataset):
 
         # class label for the image
         y = self.image_data.iloc[idx][const.CSV_CLOT_COLUMN]
+        # convert boolean into integer classes False = 0; True = 1
+        y = int(y)
 
         # if there is any transform method, apply it onto the image
         if self.transform:
