@@ -50,7 +50,17 @@ def create_data_split(path, train_size=0.8, valid_size=0.1, test_size=0.1):
     print("Completed data split.")
 
 
-def show_image(image, label):
+def normalise_image(image):
+    image_min = image.min()
+    image_max = image.max()
+    image.clamp_(min=image_min, max=image_max)
+    image.add_(-image_min).div_(image_max - image_min + 1e-5)
+    return image
+
+
+def show_image(image, label, normalise=True):
+    if normalise:
+        image = normalise_image(image)
     plt.imshow(image.permute(1, 2, 0), cmap='gray', vmin=0, vmax=255)
     plt.title(label)
     plt.show()
