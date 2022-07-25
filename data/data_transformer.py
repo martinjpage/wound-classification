@@ -2,8 +2,7 @@ from utils import config
 
 from torchvision import transforms
 
-# ToDo: ResNet50_Weights.IMAGENET1K_V2.transforms - but is order important?
-# ToDo: scaling pixel values: transforms.Lambda(lambda t: t/255)  # Scale pixel values to 0..1
+# ToDo: OR ResNet50_Weights.IMAGENET1K_V2.transforms
 
 def train_transformer():
     return transforms.Compose([
@@ -26,7 +25,6 @@ def val_transformer():
         transforms.RandomHorizontalFlip(0.5),
         transforms.RandomCrop(config.PRETRAINED_CROP, padding=10),
         transforms.ToTensor(),
-        transforms.Lambda(lambda t: t / 255),
         transforms.Normalize(mean=config.PRETRAINED_MEANS,
                              std=config.PRETRAINED_STDS)
     ])
@@ -37,7 +35,6 @@ def test_transformer():
         transforms.Resize(config.PRETRAINED_SIZE, interpolation=transforms.InterpolationMode.BILINEAR),
         transforms.CenterCrop(config.PRETRAINED_CROP),
         transforms.ToTensor(),
-        transforms.Lambda(lambda t: t / 255),
         transforms.Normalize(mean=config.PRETRAINED_MEANS,
                              std=config.PRETRAINED_STDS)
     ])

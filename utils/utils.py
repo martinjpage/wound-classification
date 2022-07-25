@@ -19,6 +19,7 @@ def load_image_filenames(path):
     return pd.read_csv(path, usecols=[const.CSV_FILENAME_COLUMN, const.CSV_CLOT_COLUMN])
 
 
+# ToDo: increase val size
 def create_data_split(path, train_size=0.8, valid_size=0.1, test_size=0.1):
     """Loads a CSV as df, splits the two-column df into a train, validation, test set while balancing the y. Combines
      the x and y series back into dfs and exports to CSV."""

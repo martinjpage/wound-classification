@@ -1,7 +1,9 @@
 from utils import config
 
+import time
 import copy
 import torch
+import torch.nn.functional as F
 from torch.optim.lr_scheduler import OneCycleLR
 
 
@@ -12,44 +14,19 @@ def create_scheduler(trainloader, optimiser):
     return OneCycleLR(optimiser, max_lr=MAX_LRS, total_steps=TOTAL_STEPS)
 
 
-def train(train_loader, model, optimiser, criterion, scheduler, device):
-    epoch_loss = 0
-    epoch_acc = 0
+def calculate_accuracy(y_preds, y):
+    with torch.no_grad():
+        batch_size = y.shape[0]
+        _, predicted_class = torch.max(y_preds, 1)
+        correct = predicted_class.eq(y.view(1, -1).expand_as(predicted_class))
+        return correct/batch_size
 
-    model.train() # Set model to training mode
 
-    # Iterate over data
-    for inputs, labels in train_loader:
-        inputs = inputs.to(device)
-        labels = labels.to(device)
-
-        # zero the parameter gradients
-        optimiser.zero_grad()
-
-        # forward
-        outputs = model(inputs)
-        _, preds = torch.max(outputs, 1)
-        y_pred, _ = model(x)
-
-        loss = criterion(y_pred, y)
-
-        acc_1, acc_5 = calculate_topk_accuracy(y_pred, y)
-
-        loss.backward()
-
-        optimiser.step()
-
-        scheduler.step()
-
-        epoch_loss += loss.item()
-        epoch_acc_1 += acc_1.item()
-        epoch_acc_5 += acc_5.item()
-
-    epoch_loss /= len(dataloaders)
-    epoch_acc_1 /= len(dataloaders)
-    epoch_acc_5 /= len(dataloaders)
-
-    return epoch_loss, epoch_acc_1, epoch_acc_5
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
 
 
 def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs):
@@ -62,56 +39,60 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
     best_acc = 0.0
 
     for epoch in range(epochs):
-        print(f'Epoch {epoch}/{num_epochs - 1}')
+        print(f'Epoch {epoch+1}/{epochs}')
         print('-' * 10)
+        start_time = time.monotonic()
 
-    # Each epoch has a training and validation phase
-    for phase in ['train', 'val']:
-        if phase == 'train':
-            model.train()  # Set model to training mode
-        else:
-            model.eval()  # Set model to evaluate mode
+        # Each epoch has a training and validation phase
+        for phase in ['train', 'val']:
+            if phase == 'train':
+                model.train()  # Set model to training mode
+            else:
+                model.eval()  # Set model to evaluate mode
 
-        running_loss = 0.0
-        running_corrects = 0
+            running_loss = 0.0
+            running_corrects = 0
 
-        # Iterate over data.
-        for inputs, labels in dataloaders[phase]:
-            inputs = inputs.to(device)
-            labels = labels.to(device)
+            # Iterate over data.
+            for inputs, labels in dataloaders[phase]:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
 
-            # zero the parameter gradients
-            optimiser.zero_grad()
+                # zero the parameter gradients
+                optimiser.zero_grad()
 
-            # forward
-            # track history if only in train
-            with torch.set_grad_enabled(phase == 'train'):
-                outputs = model(inputs)
-                _, preds = torch.max(outputs, 1)
-                loss = criterion(outputs, labels)
+                # forward
+                # track history if only in train
+                with torch.set_grad_enabled(phase == 'train'):
+                    y_preds, _ = model(inputs)
+                    _, pred_classes = torch.max(y_preds, 1)
+                    loss = criterion(y_preds, labels)
 
-                # backward + optimize only if in training phase
-                if phase == 'train':
-                    loss.backward()
-                    optimiser.step()
+                    # backward + optimize only if in training phase
+                    if phase == 'train':
+                        loss.backward()
+                        optimiser.step()
 
-            # statistics
-            running_loss += loss.item() * inputs.size(0)
-            running_corrects += torch.sum(preds == labels.data)
-        if phase == 'train':
-            scheduler.step()
+                # statistics
+                running_loss += loss.item() * inputs.size(0)
+                running_corrects += torch.sum(pred_classes == labels.data)
+            if phase == 'train':
+                scheduler.step()
 
-        epoch_loss = running_loss / len(dataloaders[phase])
-        epoch_acc = running_corrects.double() / len(dataloaders[phase])
+            epoch_loss = running_loss / len(dataloaders[phase].dataset)
+            epoch_acc = running_corrects.double() / len(dataloaders[phase].dataset)
 
-        print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
+            end_time = time.monotonic()
+            epoch_mins, epoch_secs = epoch_time(start_time, end_time)
+            print(f'Epoch: {epoch + 1:02} - {phase} | Epoch Time: {epoch_mins}m {epoch_secs}s')
+            print(f'{phase} Loss: {epoch_loss:.4f} Acc: {epoch_acc:.4f}')
 
-        # deep copy the model
-        if phase == 'val' and epoch_acc > best_acc:
-            best_acc = epoch_acc
-            best_model_wts = copy.deepcopy(model.state_dict())
+            # deep copy the model
+            if phase == 'val' and epoch_acc > best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(model.state_dict())
 
-    print()
+        print()
 
     time_elapsed = time.time() - since
     print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
@@ -120,3 +101,34 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
     # load best model weights
     model.load_state_dict(best_model_wts)
     return model
+
+
+def get_predictions(model, dataloader, device):
+
+    model.eval()
+
+    images = []
+    labels = []
+    probs = []
+
+    with torch.no_grad():
+
+        for x, y in dataloader:
+
+            x = x.to(device)
+
+            y_pred, _ = model(x)
+
+            y_prob = F.softmax(y_pred, dim = -1)
+            top_pred = y_prob.argmax(1, keepdim = True)
+
+            images.append(x.cpu())
+            labels.append(y.cpu())
+            probs.append(y_prob.cpu())
+
+    images = torch.cat(images, dim = 0)
+    labels = torch.cat(labels, dim = 0)
+    probs = torch.cat(probs, dim = 0)
+
+    return images, labels, probs
+

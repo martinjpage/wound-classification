@@ -155,3 +155,4 @@ static
 # Pipeline Specific
 data/images
 egs/
+*.pt
