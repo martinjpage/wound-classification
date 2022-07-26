@@ -5,7 +5,6 @@ import torch.nn as nn
 from torchvision.models import resnet50, ResNet50_Weights
 
 
-# ToDo: compare to 101
 def create_resnet50():
     ResNetConfig = create_resnet_config()
     resnet50_config = ResNetConfig(block=Bottleneck,

@@ -13,6 +13,7 @@ from torch import optim
 import wandb
 
 
+# ToDo: downsample and dilation in CNN
 # Configure Experiment and Logging
 project_name = "my-test-project"
 experiment_name = 'resnet50'
