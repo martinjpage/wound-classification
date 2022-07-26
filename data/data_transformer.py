@@ -1,40 +1,45 @@
-from utils import config
-
+from torchvision.models import ResNet50_Weights, ResNet101_Weights
 from torchvision import transforms
-
-# ToDo: OR ResNet50_Weights.IMAGENET1K_V2.transforms
-
-def train_transformer():
-    return transforms.Compose([
-        transforms.Resize(size=config.PRETRAINED_SIZE, interpolation=transforms.InterpolationMode.BILINEAR),
-        transforms.RandomRotation(degrees=5),
-        transforms.RandomHorizontalFlip(p=0.5),
-        transforms.RandomVerticalFlip(p=0.5),
-        transforms.RandomCrop(size=config.PRETRAINED_CROP, padding=10),
-        transforms.GaussianBlur(kernel_size=1),
-        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0, hue=0),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=config.PRETRAINED_MEANS, std=config.PRETRAINED_STDS)
-    ])
+import torch
+import random
 
 
-def val_transformer():
-    return transforms.Compose([
-        transforms.Resize(config.PRETRAINED_SIZE, interpolation=transforms.InterpolationMode.BILINEAR),
-        transforms.RandomRotation(5),
-        transforms.RandomHorizontalFlip(0.5),
-        transforms.RandomCrop(config.PRETRAINED_CROP, padding=10),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=config.PRETRAINED_MEANS,
-                             std=config.PRETRAINED_STDS)
-    ])
+def train_transformer(model):
+    torch.random.manual_seed(123)
+    random.seed(123)
+    composed = [transforms.RandomRotation(degrees=5), transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomVerticalFlip(p=0.5), transforms.GaussianBlur(kernel_size=1),
+                transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0, hue=0)]
+
+    if model == 'resnet50':
+        composed.extend([ResNet50_Weights.IMAGENET1K_V2.transforms()])
+    elif model == 'resnet101':
+        composed.extend([ResNet101_Weights.IMAGENET1K_V2.transforms()])
+    return transforms.Compose(composed)
 
 
-def test_transformer():
-    return transforms.Compose([
-        transforms.Resize(config.PRETRAINED_SIZE, interpolation=transforms.InterpolationMode.BILINEAR),
-        transforms.CenterCrop(config.PRETRAINED_CROP),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=config.PRETRAINED_MEANS,
-                             std=config.PRETRAINED_STDS)
-    ])
+def val_transformer(model):
+    torch.random.manual_seed(123)
+    random.seed(123)
+
+    composed = [transforms.RandomRotation(degrees=5), transforms.RandomHorizontalFlip(p=0.5),
+                transforms.GaussianBlur(kernel_size=1)]
+
+    if model == 'resnet50':
+        composed.extend([ResNet50_Weights.IMAGENET1K_V2.transforms()])
+    elif model == 'resnet101':
+        composed.extend([ResNet101_Weights.IMAGENET1K_V2.transforms()])
+    return transforms.Compose(composed)
+
+
+def test_transformer(model):
+    torch.random.manual_seed(123)
+    random.seed(123)
+
+    composed = []
+
+    if model == 'resnet50':
+        composed.extend([ResNet50_Weights.IMAGENET1K_V2.transforms()])
+    elif model == 'resnet101':
+        composed.extend([ResNet101_Weights.IMAGENET1K_V2.transforms()])
+    return transforms.Compose(composed)

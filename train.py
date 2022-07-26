@@ -12,22 +12,24 @@ import torch.nn as nn
 from torch import optim
 import wandb
 
+
 # Configure Experiment and Logging
 project_name = "my-test-project"
 experiment_name = 'resnet50'
-WANDB_KEY = '5daa291a45f220cbec42e63995626bb6c5712839'
-wandb.login(key=WANDB_KEY)
-wandb.init(project=project_name, name=experiment_name)
-wandb.config = {
+run_config = {
     "learning_rate": config.FOUND_LR,
     "epochs": config.EPOCHS,
     "batch_size": config.BATCH_SIZE,
     "weight_decay": config.WEIGHT_DECAY,
     "loss": "cross_entropy",
-    "selection_metric": "fscore",
-    "stop_metric": "fscore",
-    "architecture": "resnet50"
+    "selection_metric": config.SELECTION_METRIC,
+    "stop_metric": config.STOP_METRIC,
+    "architecture": config.ARCHITECTURE
 }
+
+WANDB_KEY = '5daa291a45f220cbec42e63995626bb6c5712839'
+wandb.login(key=WANDB_KEY)
+wandb.init(project=project_name, name=experiment_name, config=run_config)
 
 # Setup CPU/GPU
 device = utils.setup_gpu()
@@ -41,11 +43,14 @@ test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv'
 
 # Data Loading
 # ToDo: tiling?; transforms
-trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, transform=train_transformer(),
+trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory,
+                                transform=train_transformer(config.ARCHITECTURE),
                                 batch_size=config.BATCH_SIZE, shuffle=True)
-valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, transform=val_transformer(),
+valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory,
+                              transform=val_transformer(config.ARCHITECTURE),
                               batch_size=config.BATCH_SIZE, shuffle=True)
-testloader = create_dataloader(images_csv=test_file, image_dir=image_directory, transform=test_transformer())
+testloader = create_dataloader(images_csv=test_file, image_dir=image_directory,
+                               transform=test_transformer(config.ARCHITECTURE))
 dataloaders = {"train": trainloader, "val": valloader, "test": testloader}
 
 
@@ -82,20 +87,5 @@ torch.save(model.state_dict(), model_name)
 
 
 # Testing
-images, labels, pred_labels = get_predictions(model, testloader, device)
+images, labels, pred_labels = get_predictions(model, valloader, device)
 plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
-
-
-# ToDo: hyperparameter tuning; model;
-#  keeping track of results/plotting loss/accuracy
-
-
-
-# if __name__ == '__main__':
-#     # view images in dataloader
-#     for train_features, train_labels in dataloader["train"]:
-#         print(f"Feature batch shape: {train_features.size()}")
-#         print(f"Labels batch shape: {train_labels.size()}")
-#         img = train_features[0]
-#         label = train_labels.item()
-#         utils.show_image(img, label, normalise=True)
