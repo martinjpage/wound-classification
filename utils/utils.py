@@ -15,17 +15,21 @@ def get_image_filenames(image_directory, csv_output):
     print("Image file names written to file")
 
 
+def change_image_file_resolutions(path, to_replace, new_value):
+    df = pd.read_csv(path, usecols=[const.CSV_FILENAME_COLUMN, const.CSV_CLOT_COLUMN])
+    df[const.CSV_FILENAME_COLUMN] = df[const.CSV_FILENAME_COLUMN].str.replace(to_replace, new_value)
+    df.to_csv(path, index=False)
+    print(f"Image file names written to file with '{to_replace}' changed to '{new_value}' in the filenames.")
+
+
 def load_image_filenames(path):
     return pd.read_csv(path, usecols=[const.CSV_FILENAME_COLUMN, const.CSV_CLOT_COLUMN])
 
 
-# ToDo: increase val size
 def create_data_split(path, train_size=0.8, valid_size=0.1, test_size=0.1):
     """Loads a CSV as df, splits the two-column df into a train, validation, test set while balancing the y. Combines
      the x and y series back into dfs and exports to CSV."""
 
-    if train_size + valid_size + test_size != 1:
-        raise ValueError("The sum of the data split should add to 1.")
     train_size = train_size/(1-test_size)
 
     df = load_image_filenames(path)

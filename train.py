@@ -1,7 +1,8 @@
 from utils import utils
 from utils import config
-from models.trainer import create_scheduler, fit_model, get_predictions
+from models.trainer import create_scheduler, fit_model, get_predictions, plot_confusion_matrix
 from models.resnet50 import create_resnet50
+from models.lr_finder import LRFinder
 from data.dataloader import create_dataloader
 from data.data_transformer import train_transformer, val_transformer, test_transformer
 
@@ -14,14 +15,14 @@ from torch import optim
 device = utils.setup_gpu()
 
 # Data Paths
-image_directory = os.path.join(os. getcwd(), 'data', 'images')
-train_file = os.path.join(os. getcwd(), 'data', 'train_set.csv')
-validation_file = os.path.join(os. getcwd(), 'data', 'val_set.csv')
-test_file = os.path.join(os. getcwd(), 'data', 'test_set.csv')
+image_directory = os.path.join(os. getcwd(), 'data', 'images', 'res300')
+train_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'train_set.csv')
+validation_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'val_set.csv')
+test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv')
 
 
 # Data Loading
-# ToDo: tiling?
+# ToDo: tiling?; transforms
 trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, transform=train_transformer(),
                                 batch_size=config.BATCH_SIZE, shuffle=True)
 valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, transform=val_transformer(),
@@ -37,29 +38,32 @@ criterion = nn.CrossEntropyLoss().to(device)
 # optimiser = optim.AdamW(model.parameters(), lr=config.START_LR, weight_decay=0)
 # lr_finder = LRFinder(model, optimiser, criterion, device)
 # lr_finder.range_test(trainloader, config.END_LR, config.NUM_ITER)
-# lr_finder.plot_lr_finder()
+# lr_finder.plot_lr_finder(skip_start=25, skip_end=10)
 
 # Training
-params = [
-          {'params': model.conv1.parameters(), 'lr': config.FOUND_LR / 10},
-          {'params': model.bn1.parameters(), 'lr': config.FOUND_LR / 10},
-          {'params': model.layer1.parameters(), 'lr': config.FOUND_LR / 8},
-          {'params': model.layer2.parameters(), 'lr': config.FOUND_LR / 6},
-          {'params': model.layer3.parameters(), 'lr': config.FOUND_LR / 4},
-          {'params': model.layer4.parameters(), 'lr': config.FOUND_LR / 2},
-          {'params': model.fc.parameters()}
-         ]
+# params = [
+#           {'params': model.conv1.parameters(), 'lr': config.FOUND_LR / 10},
+#           {'params': model.bn1.parameters(), 'lr': config.FOUND_LR / 10},
+#           {'params': model.layer1.parameters(), 'lr': config.FOUND_LR / 8},
+#           {'params': model.layer2.parameters(), 'lr': config.FOUND_LR / 6},
+#           {'params': model.layer3.parameters(), 'lr': config.FOUND_LR / 4},
+#           {'params': model.layer4.parameters(), 'lr': config.FOUND_LR / 2},
+#           {'params': model.fc.parameters()}
+#          ]
 # ToDo: weight decay if use different learning rates
-# ToDo: better measurement than accuracy; fewer transformations on training; up/down-sampling
-# ToDo: stop training at plateau
-optimiser = optim.AdamW(model.parameters(), lr=config.FOUND_LR, weight_decay=0)
+# ToDo: better measurement than accuracy; fewer transformations on training; tiling; up/down-sampling
+optimiser = optim.AdamW(model.parameters(), lr=config.FOUND_LR, weight_decay=config.WEIGHT_DECAY)
 scheduler = create_scheduler(trainloader=trainloader, optimiser=optimiser)
-model_fit = fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs=config.EPOCHS)
+model = fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs=config.EPOCHS, patience=10)
 
-torch.save(model.state_dict(), f'resnet50_lr{config.FOUND_LR}.pt')
+# Model Save
+model_name = f'resnet50_lr{config.FOUND_LR}-weight{config.WEIGHT_DECAY}-fscore-30epoch.pt'
+torch.save(model.state_dict(), model_name)
 
-images, labels, probs = get_predictions(model, testloader, device)
-pred_labels = torch.argmax(probs, 1)
+
+# Testing
+images, labels, pred_labels = get_predictions(model, valloader, device)
+plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
 
 
 # ToDo: train function; hyperparameter tuning (LR Finder); model;
