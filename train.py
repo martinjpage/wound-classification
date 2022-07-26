@@ -54,7 +54,9 @@ criterion = nn.CrossEntropyLoss().to(device)
 # ToDo: better measurement than accuracy; fewer transformations on training; tiling; up/down-sampling
 optimiser = optim.AdamW(model.parameters(), lr=config.FOUND_LR, weight_decay=config.WEIGHT_DECAY)
 scheduler = create_scheduler(trainloader=trainloader, optimiser=optimiser)
-model = fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs=config.EPOCHS, patience=10)
+model = fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs=config.EPOCHS,
+                  selection_metric='fscore', early_stop=True, stop_metric='fscore', patience=4)
+
 
 # Model Save
 model_name = f'resnet50_lr{config.FOUND_LR}-weight{config.WEIGHT_DECAY}-fscore-30epoch.pt'
