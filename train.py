@@ -10,6 +10,24 @@ import os
 import torch
 import torch.nn as nn
 from torch import optim
+import wandb
+
+# Configure Experiment and Logging
+project_name = "my-test-project"
+experiment_name = 'resnet50'
+WANDB_KEY = '5daa291a45f220cbec42e63995626bb6c5712839'
+wandb.login(key=WANDB_KEY)
+wandb.init(project=project_name, name=experiment_name)
+wandb.config = {
+    "learning_rate": config.FOUND_LR,
+    "epochs": config.EPOCHS,
+    "batch_size": config.BATCH_SIZE,
+    "weight_decay": config.WEIGHT_DECAY,
+    "loss": "cross_entropy",
+    "selection_metric": "fscore",
+    "stop_metric": "fscore",
+    "architecture": "resnet50"
+}
 
 # Setup CPU/GPU
 device = utils.setup_gpu()
@@ -56,19 +74,19 @@ optimiser = optim.AdamW(model.parameters(), lr=config.FOUND_LR, weight_decay=con
 scheduler = create_scheduler(trainloader=trainloader, optimiser=optimiser)
 model = fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs=config.EPOCHS,
                   selection_metric='fscore', early_stop=True, stop_metric='fscore', patience=4)
-
+wandb.finish()
 
 # Model Save
-model_name = f'resnet50_lr{config.FOUND_LR}-weight{config.WEIGHT_DECAY}-fscore-30epoch.pt'
+model_name = f'resnet50_lr{config.FOUND_LR}-weight{config.WEIGHT_DECAY}-fscore-30epoch-wandb.pt'
 torch.save(model.state_dict(), model_name)
 
 
 # Testing
-images, labels, pred_labels = get_predictions(model, valloader, device)
+images, labels, pred_labels = get_predictions(model, testloader, device)
 plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
 
 
-# ToDo: train function; hyperparameter tuning (LR Finder); model;
+# ToDo: hyperparameter tuning; model;
 #  keeping track of results/plotting loss/accuracy
 
 

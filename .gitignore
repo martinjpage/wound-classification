@@ -156,3 +156,4 @@ static
 data/images
 egs/
 *.pt
+wandb/

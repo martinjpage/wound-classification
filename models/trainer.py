@@ -2,6 +2,7 @@ import numpy as np
 
 from utils import config
 
+import wandb
 import time
 import copy
 import torch
@@ -87,6 +88,14 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
             epoch_loss = running_loss / len(dataloaders[phase].dataset)
             epoch_metrics = calculate_metrics(true_labels, predicted_labels, as_dict=True)
             epoch_metrics['loss'] = epoch_loss
+
+            wandb.log({f'{phase}_loss': epoch_metrics['loss'],
+                       f'{phase}_acc': epoch_metrics['acc'],
+                       f'{phase}_fscore': epoch_metrics['fscore'],
+                       f'{phase}_gmean': epoch_metrics['gmean'],
+                       f'{phase}_jindex': epoch_metrics['jindex'],
+                       })
+            wandb.watch(model)
 
             end_time = time.monotonic()
             epoch_mins, epoch_secs = epoch_time(start_time, end_time)
