@@ -1,16 +1,13 @@
 import numpy as np
 
 from utils import config
+from utils.utils import calculate_metrics
 
 import wandb
 import time
 import copy
 import torch
-import torch.nn.functional as F
 from torch.optim.lr_scheduler import OneCycleLR
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import ConfusionMatrixDisplay
 
 
 def create_scheduler(trainloader, optimiser):
@@ -32,7 +29,6 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
     since = time.time()
 
     model = model.to(device)
-    criterion = criterion.to(device)
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_selection_score = 0.0
@@ -44,7 +40,6 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
         print(f'Epoch {epoch+1}/{epochs}')
         print('-' * 10)
         start_time = time.monotonic()
-
 
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
@@ -103,7 +98,6 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
             print(f'{phase} Loss: {epoch_metrics["loss"]:.4f} Acc: {epoch_metrics["acc"]:.4f} '
                   f'F-score: {epoch_metrics["fscore"]:.4f} G Score: {epoch_metrics["gmean"]:.4f} '
                   f'J Score: {epoch_metrics["jindex"]:.4f}')
-            # plot_confusion_matrix(true_labels, predicted_labels, classes=['False', 'True'])
 
             # deep copy the best model
             if phase == 'val' and epoch_metrics[selection_metric] > best_selection_score and \
@@ -141,54 +135,3 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
     # load best model weights
     model.load_state_dict(best_model_wts)
     return model
-
-
-def get_predictions(model, dataloader, device):
-    model.eval()
-
-    images = []
-    labels = []
-    probs = []
-
-    with torch.no_grad():
-        for x, y in dataloader:
-            x = x.to(device)
-            y_pred, _ = model(x)
-            y_prob = F.softmax(y_pred, dim=-1)
-
-            images.append(x.cpu())
-            labels.append(y.cpu())
-            probs.append(y_prob.cpu())
-
-    images = torch.cat(images, dim=0)
-    labels = torch.cat(labels, dim=0)
-    probs = torch.cat(probs, dim=0)
-    pred_labels = torch.argmax(probs, 1)
-
-    return images, labels, pred_labels
-
-
-def calculate_metrics(labels, pred_labels, as_dict=False):
-    accuracy = torch.sum(pred_labels == labels)/len(pred_labels)
-    tn, fp, fn, tp = confusion_matrix(labels, pred_labels).ravel()
-    sensitivity = tp / (tp + fn)  # aka recall
-    specificity = tn / (fp + tn)
-    g_mean = np.sqrt(sensitivity*specificity)  # Fowlkes–Mallows index
-    precision = tp / (tp + fp)
-    f_score = (2 * precision * sensitivity) / (precision + sensitivity)
-    jaccard_index = tp / (tp+fp+fn)
-    if as_dict:
-        return {'acc': accuracy, 'gmean':g_mean, 'fscore': f_score, 'jindex':jaccard_index}
-    return accuracy, g_mean, f_score, jaccard_index
-
-
-def plot_confusion_matrix(labels, pred_labels, classes):
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(1, 1, 1)
-    cm = confusion_matrix(labels, pred_labels)
-    cm = ConfusionMatrixDisplay(cm, display_labels=classes)
-    cm.plot(values_format='d', cmap='Blues', ax=ax)
-    acc, gmean, fscore, j_index = calculate_metrics(labels, pred_labels)
-    plt.title(f'Accuracy: {acc:.2f}, G-mean: {gmean:.2f}, F Score: {fscore:.2f}')
-    plt.xticks(rotation=20)
-    plt.show()

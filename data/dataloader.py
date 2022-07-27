@@ -13,13 +13,14 @@ class ClassificationDataset(Dataset):
     :return Dataset class for preparing inputs for DataLoader
     """
 
-    def __init__(self, images_csv: str, image_dir:str, transform=None):
+    def __init__(self, images_csv: str, image_dir: str, target: str, transform=None):
         # image directory
         self.image_dir = image_dir
         # image paths and lables
-        self.image_data = utils.load_image_filenames(images_csv)
+        self.image_data = utils.load_image_filenames(images_csv, col=target)
         # transform to be used on image
         self.transform = transform
+        self.target = target
 
     def __len__(self):
         # number of images in dataset
@@ -32,7 +33,7 @@ class ClassificationDataset(Dataset):
         img = Image.open(img_name).convert('RGB')
 
         # class label for the image
-        y = self.image_data.iloc[idx][const.CSV_CLOT_COLUMN]
+        y = self.image_data.iloc[idx][self.target]
         # convert boolean into integer classes False = 0; True = 1
         y = int(y)
 
@@ -42,7 +43,7 @@ class ClassificationDataset(Dataset):
         return img, y
 
 
-def create_dataloader(images_csv: str, image_dir: str, transform=None, batch_size=1, shuffle=False):
-    dataset = ClassificationDataset(images_csv=images_csv, image_dir=image_dir, transform=transform)
+def create_dataloader(images_csv: str, image_dir: str, target: str, transform=None, batch_size=1, shuffle=False):
+    dataset = ClassificationDataset(images_csv=images_csv, image_dir=image_dir, target=target, transform=transform)
     dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
     return dataloader

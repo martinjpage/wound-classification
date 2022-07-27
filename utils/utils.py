@@ -1,40 +1,47 @@
-from utils import config as const
+from utils import config
 
 import os
 import torch
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 
 
 def get_image_filenames(image_directory, csv_output):
     image_files = os.listdir(image_directory)
-    df = pd.DataFrame(image_files, columns=[const.CSV_FILENAME_COLUMN])
-    df[const.CSV_CLOT_COLUMN] = ""
+    df = pd.DataFrame(image_files, columns=[config.CSV_FILENAME_COLUMN])
+    df[config.CSV_CLOT_COLUMN] = ""
+    df[config.CSV_DAY_COLUMN] = ""
     df.to_csv(csv_output, index=False)
     print("Image file names written to file")
 
 
 def change_image_file_resolutions(path, to_replace, new_value):
-    df = pd.read_csv(path, usecols=[const.CSV_FILENAME_COLUMN, const.CSV_CLOT_COLUMN])
-    df[const.CSV_FILENAME_COLUMN] = df[const.CSV_FILENAME_COLUMN].str.replace(to_replace, new_value)
+    df = pd.read_csv(path, usecols=[config.CSV_FILENAME_COLUMN, config.CSV_CLOT_COLUMN, config.CSV_DAY_COLUMN])
+    df[config.CSV_FILENAME_COLUMN] = df[config.CSV_FILENAME_COLUMN].str.replace(to_replace, new_value)
     df.to_csv(path, index=False)
     print(f"Image file names written to file with '{to_replace}' changed to '{new_value}' in the filenames.")
 
 
-def load_image_filenames(path):
-    return pd.read_csv(path, usecols=[const.CSV_FILENAME_COLUMN, const.CSV_CLOT_COLUMN])
+def load_image_filenames(path, col='all'):
+    if col == config.CSV_CLOT_COLUMN:
+        return pd.read_csv(path, usecols=[config.CSV_FILENAME_COLUMN, config.CSV_CLOT_COLUMN])
+    elif col == config.CSV_DAY_COLUMN:
+        return pd.read_csv(path, usecols=[config.CSV_FILENAME_COLUMN, config.CSV_DAY_COLUMN])
+    return pd.read_csv(path, usecols=[config.CSV_FILENAME_COLUMN, config.CSV_CLOT_COLUMN, config.CSV_DAY_COLUMN])
 
 
-def create_data_split(path, train_size=0.8, valid_size=0.1, test_size=0.1):
+def create_data_split(path, col, train_size=0.8, valid_size=0.1, test_size=0.1):
     """Loads a CSV as df, splits the two-column df into a train, validation, test set while balancing the y. Combines
      the x and y series back into dfs and exports to CSV."""
 
     train_size = train_size/(1-test_size)
 
-    df = load_image_filenames(path)
-    X_all = df[const.CSV_FILENAME_COLUMN]
-    y_all = df[const.CSV_CLOT_COLUMN]
+    df = load_image_filenames(path, col)
+    X_all = df[config.CSV_FILENAME_COLUMN]
+    y_all = df[col]
 
     x_train_val, x_test, y_train_val, y_test = train_test_split(X_all, y_all, test_size=test_size,
                                                                 stratify=y_all, random_state=123)
@@ -76,3 +83,17 @@ def setup_gpu():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("Using {} device.".format(device))
     return device
+
+
+def calculate_metrics(labels, pred_labels, as_dict=False):
+    accuracy = torch.sum(pred_labels == labels)/len(pred_labels)
+    tn, fp, fn, tp = confusion_matrix(labels, pred_labels).ravel()
+    sensitivity = tp / (tp + fn)  # aka recall
+    specificity = tn / (fp + tn)
+    g_mean = np.sqrt(sensitivity*specificity)  # Fowlkes–Mallows index
+    precision = tp / (tp + fp)
+    f_score = (2 * precision * sensitivity) / (precision + sensitivity)
+    jaccard_index = tp / (tp+fp+fn)
+    if as_dict:
+        return {'acc': accuracy, 'gmean':g_mean, 'fscore': f_score, 'jindex':jaccard_index}
+    return accuracy, g_mean, f_score, jaccard_index
