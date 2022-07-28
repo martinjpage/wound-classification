@@ -2,8 +2,9 @@ from utils import utils
 from utils import config as const
 
 import os
+import numpy as np
 from PIL import Image
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 
 
 class ClassificationDataset(Dataset):
@@ -43,7 +44,21 @@ class ClassificationDataset(Dataset):
         return img, y
 
 
-def create_dataloader(images_csv: str, image_dir: str, target: str, transform=None, batch_size=1, shuffle=False):
+def create_dataloader(images_csv: str, image_dir: str, target: str, transform=None, batch_size=1,
+                      shuffle=False, over_sample=False):
+    if over_sample:
+        sampler = create_oversampler(images_csv, target)
+    else:
+        sampler = None
     dataset = ClassificationDataset(images_csv=images_csv, image_dir=image_dir, target=target, transform=transform)
-    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+    dataloader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, sampler=sampler)
     return dataloader
+
+
+def create_oversampler(images_csv, target):
+    df = utils.load_image_filenames(images_csv, col=target)
+    unique_classes, class_counts = np.unique(df[target], return_counts=True)
+    class_weights = [sum(class_counts) / c for c in class_counts]
+    weights = [class_weights[e] for e in df[target]]
+    sampler = WeightedRandomSampler(weights, len(df[target]))
+    return sampler

@@ -8,6 +8,8 @@ import time
 import copy
 import torch
 from torch.optim.lr_scheduler import OneCycleLR
+import torch.nn as nn
+import torch.nn.functional as F
 
 
 def create_scheduler(trainloader, optimiser):
@@ -32,7 +34,7 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_selection_score = 0.0
-    last_early_metric = np.inf
+    last_early_metric = -np.inf
     patience = patience
     trigger_times = 0
 
@@ -106,7 +108,7 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
                 best_model_wts = copy.deepcopy(model.state_dict())
 
             # early stopping
-            if early_stop and phase == 'val' and epoch_metrics[stop_metric] > last_early_metric:
+            if early_stop and phase == 'val' and epoch_metrics[stop_metric] < last_early_metric:
                 trigger_times += 1
                 last_early_metric = epoch_metrics[stop_metric]
                 print(f'Easy Stop Trigger Times:{trigger_times} of {patience}.')
@@ -121,7 +123,7 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
                     model.load_state_dict(best_model_wts)
                     return model
 
-            elif early_stop and phase == 'val' and epoch_metrics[stop_metric] <= last_early_metric:
+            elif early_stop and phase == 'val' and epoch_metrics[stop_metric] >= last_early_metric:
                 print('Resetting early stopping trigger to 0.')
                 trigger_times = 0
                 last_early_metric = epoch_metrics[stop_metric]
@@ -135,3 +137,17 @@ def fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epoch
     # load best model weights
     model.load_state_dict(best_model_wts)
     return model
+
+
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=0.25, gamma=2):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, inputs, targets):
+        all_probs = F.softmax(inputs, dim=-1)
+        class_probs, y_pred = torch.max(all_probs, dim=1)
+        bce_loss = F.binary_cross_entropy(class_probs,  targets.float())
+        loss = self.alpha * (1 - torch.exp(-bce_loss)) ** self.gamma * bce_loss
+        return loss

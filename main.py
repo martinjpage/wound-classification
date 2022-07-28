@@ -1,9 +1,11 @@
 from data.dataloader import create_dataloader
 from data.data_transformer import train_transformer, val_transformer, test_transformer
 from utils import config
+from utils import utils
 
 import os
-from utils import utils
+import numpy as np
+
 
 # Project Configuration
 # image_directory = os.path.join(os. getcwd(), 'data', 'images', 'res300')
@@ -28,8 +30,9 @@ validation_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'val_set
 test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv')
 
 
+
 # Data Loading
-# ToDo: tiling?; transforms
+# ToDo: tiling?
 trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory,
                                 transform=train_transformer(config.ARCHITECTURE),
                                 batch_size=config.BATCH_SIZE, shuffle=True)

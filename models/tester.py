@@ -76,9 +76,9 @@ def plot_most_incorrect(images, labels, probs, pred_labels, classes, n_images=10
         image, true_label, prob, pred_label = incorrect[i]
         image = image.permute(1, 2, 0)
         true_prob = prob[true_label]
-        incorrect_prob, incorrect_label = torch.max(probs, dim=0)[0]
+        incorrect_prob = prob[pred_label]
         true_class = classes[true_label]
-        incorrect_class = classes[round(incorrect_label.item())]
+        incorrect_class = classes[pred_label]
 
         if normalise:
             image = normalise_image(image)

@@ -17,4 +17,4 @@ EARYSTOP = True
 PATIENCE = 4
 SELECTION_METRIC = "fscore"
 STOP_METRIC = "fscore"
-ARCHITECTURE = 'resnet101'
+ARCHITECTURE = 'resnet50'

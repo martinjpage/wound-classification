@@ -32,7 +32,7 @@ dataloaders = {"train": trainloader, "val": valloader, "test": testloader}
 
 
 # Load Model
-model_path = os.path.join(os. getcwd(), 'reports', 'saved_models', 'resnet50_gmean_ce-lr0.005-epoch-50.pt')
+model_path = os.path.join(os. getcwd(), 'reports', 'saved_models', 'resnet50_fscore_ce_lrs-epoch-50.pt')
 
 model = None
 if config.ARCHITECTURE == "resnet50":
@@ -46,8 +46,14 @@ model.load_state_dict(torch.load(model_path))
 model.eval()
 
 # Testing
+images, labels, probs, pred_labels = get_predictions(model, trainloader, device)
+plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
+plot_most_incorrect(images, labels, probs, pred_labels, classes=['False', 'True'])
+
 images, labels, probs, pred_labels = get_predictions(model, valloader, device)
 plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
+plot_most_incorrect(images, labels, probs, pred_labels, classes=['False', 'True'])
 
 images, labels, probs, pred_labels = get_predictions(model, testloader, device)
 plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
+plot_most_incorrect(images, labels, probs, pred_labels, classes=['False', 'True'])

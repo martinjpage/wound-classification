@@ -1,6 +1,6 @@
 from utils import utils
 from utils import config
-from models.trainer import create_scheduler, fit_model
+from models.trainer import create_scheduler, fit_model, FocalLoss
 from models.tester import get_predictions, plot_confusion_matrix
 from models.resnet50 import create_resnet50
 from models.resnet101 import create_resnet101
@@ -11,14 +11,13 @@ from data.data_transformer import train_transformer, val_transformer, test_trans
 import os
 import torch
 import torch.nn as nn
-from torchvision.ops import sigmoid_focal_loss
 from torch import optim
 import wandb
 
 
 # Configure Experiment and Logging
 project_name = "wound_clot_classification"
-experiment_name = 'resnet101_fscore_ce_lrs'
+experiment_name = 'resnet50_fscore_fl_lrs'
 run_config = {
     "learning_rate": config.FOUND_LR,
     "epochs": config.EPOCHS,
@@ -49,7 +48,7 @@ test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv'
 # Data Loading
 trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, target=config.CSV_CLOT_COLUMN,
                                 transform=train_transformer(config.ARCHITECTURE),
-                                batch_size=config.BATCH_SIZE, shuffle=True)
+                                batch_size=config.BATCH_SIZE, shuffle=True, over_sample=False)
 valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, target=config.CSV_CLOT_COLUMN,
                               transform=val_transformer(config.ARCHITECTURE),
                               batch_size=config.BATCH_SIZE, shuffle=True)
@@ -85,8 +84,8 @@ params = [
           {'params': model.layer4.parameters(), 'lr': config.FOUND_LR / 2},
           {'params': model.fc.parameters()}
          ]
-# ToDo: weight decay if use different learning rates?
-# ToDo: tiling; up/down-sampling; criterion = focal loss
+
+# ToDo: tiling
 # optimiser = optim.AdamW(model.parameters(), lr=config.FOUND_LR, weight_decay=config.WEIGHT_DECAY)
 optimiser = optim.AdamW(params, lr=config.FOUND_LR, weight_decay=config.WEIGHT_DECAY)
 scheduler = create_scheduler(trainloader=trainloader, optimiser=optimiser)
@@ -101,5 +100,8 @@ torch.save(model.state_dict(), model_name)
 
 
 # Testing
+images, labels, probs, pred_labels = get_predictions(model, valloader, device)
+plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
+
 images, labels, probs, pred_labels = get_predictions(model, testloader, device)
 plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
