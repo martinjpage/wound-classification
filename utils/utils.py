@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 
 
 def get_image_filenames(image_directory, csv_output):
@@ -85,7 +85,7 @@ def setup_gpu():
     return device
 
 
-def calculate_metrics(labels, pred_labels, as_dict=False):
+def calculate_binary_metrics(labels, pred_labels, as_dict=False):
     accuracy = torch.sum(pred_labels == labels)/len(pred_labels)
     tn, fp, fn, tp = confusion_matrix(labels, pred_labels).ravel()
     sensitivity = tp / (tp + fn)  # aka recall
@@ -97,3 +97,13 @@ def calculate_metrics(labels, pred_labels, as_dict=False):
     if as_dict:
         return {'acc': accuracy, 'gmean':g_mean, 'fscore': f_score, 'jindex':jaccard_index}
     return accuracy, g_mean, f_score, jaccard_index
+
+
+def calculate_multi_metrics(labels, pred_labels, as_dict=False):
+    report = classification_report(labels, pred_labels, output_dict=True)
+    accuracy = report['accuracy']
+    f_score = report['weighted avg']['f1-score']
+
+    if as_dict:
+        return {'acc': accuracy, 'fscore': f_score}
+    return accuracy, f_score

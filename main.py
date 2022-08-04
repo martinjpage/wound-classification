@@ -8,8 +8,8 @@ import numpy as np
 
 
 # Project Configuration
-# image_directory = os.path.join(os. getcwd(), 'data', 'images', 'res300')
-csv_file = os.path.join(os. getcwd(), 'data', 'all_image_filenames.csv')
+image_directory = os.path.join(os. getcwd(), 'data', 'images', 'res300')
+# csv_file = os.path.join(os. getcwd(), 'data', 'all_image_filenames.csv')
 
 # Create CSV of image file names (after export, add labels to CSV manually)
 # utils.get_image_filenames(image_directory, csv_file)
@@ -25,21 +25,21 @@ csv_file = os.path.join(os. getcwd(), 'data', 'all_image_filenames.csv')
 # cds = dl.ClassificationDataset(images_csv=csv_file, image_dir=image_directory, transform=transform_data())
 
 # Data Paths
-train_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'train_set.csv')
-validation_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'val_set.csv')
-test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv')
+train_file = os.path.join(os. getcwd(), 'data', 'data_split_day', 'train_set.csv')
+validation_file = os.path.join(os. getcwd(), 'data', 'data_split_day', 'val_set.csv')
+test_file = os.path.join(os. getcwd(), 'data', 'data_split_day', 'test_set.csv')
 
 
 
 # Data Loading
 # ToDo: tiling?
-trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory,
+trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, target=config.CSV_DAY_COLUMN,
                                 transform=train_transformer(config.ARCHITECTURE),
                                 batch_size=config.BATCH_SIZE, shuffle=True)
-valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory,
+valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, target=config.CSV_DAY_COLUMN,
                               transform=val_transformer(config.ARCHITECTURE),
                               batch_size=config.BATCH_SIZE, shuffle=True)
-testloader = create_dataloader(images_csv=test_file, image_dir=image_directory,
+testloader = create_dataloader(images_csv=test_file, image_dir=image_directory, target=config.CSV_DAY_COLUMN,
                                transform=test_transformer(config.ARCHITECTURE))
 dataloaders = {"train": trainloader, "val": valloader, "test": testloader}
 

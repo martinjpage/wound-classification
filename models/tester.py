@@ -1,4 +1,4 @@
-from utils.utils import calculate_metrics, normalise_image
+from utils.utils import calculate_binary_metrics, calculate_multi_metrics,normalise_image
 
 import math
 import torch
@@ -39,8 +39,12 @@ def plot_confusion_matrix(labels, pred_labels, classes):
     cm = confusion_matrix(labels, pred_labels)
     cm = ConfusionMatrixDisplay(cm, display_labels=classes)
     cm.plot(values_format='d', cmap='Blues', ax=ax)
-    acc, gmean, fscore, j_index = calculate_metrics(labels, pred_labels)
-    plt.title(f'Accuracy: {acc:.2f}, G-mean: {gmean:.2f}, F Score: {fscore:.2f}')
+    if len(classes) == 2:
+        acc, gmean, fscore, j_index = calculate_binary_metrics(labels, pred_labels)
+        plt.title(f'Accuracy: {acc:.2f}, G-mean: {gmean:.2f}, F Score: {fscore:.2f}')
+    else:
+        acc, fscore = calculate_multi_metrics(labels, pred_labels)
+        plt.title(f'Accuracy: {acc:.2f}, F Score: {fscore:.2f}')
     plt.xticks(rotation=20)
     plt.show()
 
@@ -66,6 +70,9 @@ def plot_most_incorrect(images, labels, probs, pred_labels, classes, n_images=10
 
     rows = math.floor(np.sqrt(n_images))
     cols = math.ceil(np.sqrt(n_images))
+
+    if rows * cols < n_images:
+        cols += 1
 
     fig = plt.figure(figsize=(25, 20))
 

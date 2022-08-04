@@ -15,29 +15,37 @@ device = utils.setup_gpu()
 
 # Data Paths
 image_directory = os.path.join(os. getcwd(), 'data', 'images', 'res300')
-train_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'train_set.csv')
-validation_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'val_set.csv')
-test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv')
+# train_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'train_set.csv')
+# validation_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'val_set.csv')
+# test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv')
+train_file = os.path.join(os. getcwd(), 'data', 'data_split_day', 'train_set.csv')
+validation_file = os.path.join(os. getcwd(), 'data', 'data_split_day', 'val_set.csv')
+test_file = os.path.join(os. getcwd(), 'data', 'data_split_day', 'test_set.csv')
 
 # Data Loading
-trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, target=config.CSV_CLOT_COLUMN,
+# target = config.CSV_CLOT_COLUMN
+target = config.CSV_DAY_COLUMN
+trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, target=target,
                                 transform=train_transformer(config.ARCHITECTURE),
                                 batch_size=config.BATCH_SIZE, shuffle=True)
-valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, target=config.CSV_CLOT_COLUMN,
+valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, target=target,
                               transform=val_transformer(config.ARCHITECTURE),
                               batch_size=config.BATCH_SIZE, shuffle=True)
-testloader = create_dataloader(images_csv=test_file, image_dir=image_directory, target=config.CSV_CLOT_COLUMN,
+testloader = create_dataloader(images_csv=test_file, image_dir=image_directory, target=target,
                                transform=test_transformer(config.ARCHITECTURE))
 dataloaders = {"train": trainloader, "val": valloader, "test": testloader}
 
 
 # Load Model
-model_path = os.path.join(os. getcwd(), 'reports', 'saved_models', 'resnet50_fscore_ce_lrs-epoch-50.pt')
+model_path = os.path.join(os. getcwd(), 'reports', 'saved_models', 'day-models',
+                          'resnet101_day_fscore_ce-lr-0.003-wd-0.0001-epoch-50.pt')
 
 model = None
 if config.ARCHITECTURE == "resnet50":
+    print("loading resnet50")
     model = create_resnet50().to(device)
 elif config.ARCHITECTURE == "resnet101":
+    print("loading resnet101")
     model = create_resnet101().to(device)
 else:
     raise ValueError(f"No model {config.ARCHITECTURE}.")
@@ -46,14 +54,17 @@ model.load_state_dict(torch.load(model_path))
 model.eval()
 
 # Testing
-images, labels, probs, pred_labels = get_predictions(model, trainloader, device)
-plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
-plot_most_incorrect(images, labels, probs, pred_labels, classes=['False', 'True'])
+# classes=['False', 'True']
+classes = ['Day_1', 'Day_3', 'Day_5', 'Day_7']
+
+# images, labels, probs, pred_labels = get_predictions(model, trainloader, device)
+# plot_confusion_matrix(labels, pred_labels, classes=classes)
+# plot_most_incorrect(images, labels, probs, pred_labels, classes=classes)
 
 images, labels, probs, pred_labels = get_predictions(model, valloader, device)
-plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
-plot_most_incorrect(images, labels, probs, pred_labels, classes=['False', 'True'])
+plot_confusion_matrix(labels, pred_labels, classes=classes)
+plot_most_incorrect(images, labels, probs, pred_labels, classes=classes)
 
 images, labels, probs, pred_labels = get_predictions(model, testloader, device)
-plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
-plot_most_incorrect(images, labels, probs, pred_labels, classes=['False', 'True'])
+plot_confusion_matrix(labels, pred_labels, classes=classes)
+plot_most_incorrect(images, labels, probs, pred_labels, classes=classes)

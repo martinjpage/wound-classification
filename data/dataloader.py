@@ -35,8 +35,13 @@ class ClassificationDataset(Dataset):
 
         # class label for the image
         y = self.image_data.iloc[idx][self.target]
-        # convert boolean into integer classes False = 0; True = 1
-        y = int(y)
+        if self.target == const.CSV_CLOT_COLUMN:
+            # convert boolean into integer classes False = 0; True = 1
+            self.class_map = {"False": 0, "True": 1}
+            y = int(y)
+        elif self.target == const.CSV_DAY_COLUMN:
+            self.class_map = {"day_1": 0, "day_3": 1, "day_5": 2, "day_7": 3}
+            y = self.class_map[f"day_{y}"]
 
         # if there is any transform method, apply it onto the image
         if self.transform:
