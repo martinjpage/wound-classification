@@ -1,4 +1,4 @@
-from utils.utils import calculate_binary_metrics, calculate_multi_metrics,normalise_image
+from utils.utils import calculate_binary_metrics, calculate_multi_metrics, normalise_image, tensor_imshow, get_class_name
 
 import math
 import torch
@@ -34,12 +34,12 @@ def get_predictions(model, dataloader, device, seed=123):
             labels.append(y.cpu())
             probs.append(y_prob.cpu())
 
-    images = torch.cat(images, dim=0)
+    flat_images = torch.cat(images, dim=0)
     labels = torch.cat(labels, dim=0)
     probs = torch.cat(probs, dim=0)
     pred_labels = torch.argmax(probs, 1)
 
-    return images, labels, probs, pred_labels
+    return flat_images, labels, probs, pred_labels, images
 
 
 def plot_confusion_matrix(labels, pred_labels, classes, title='', plot=False):
@@ -149,7 +149,7 @@ class RISE(nn.Module):
 
     def forward(self, x):
         N = self.N
-        _, H, W = x.size()
+        _, _, H, W = x.size()
         # Apply array of filters to the image
         stack = torch.mul(self.masks, x.data)
 
@@ -165,3 +165,36 @@ class RISE(nn.Module):
         sal = sal.view((CL, H, W))
         sal = sal / N / self.p1
         return sal
+
+
+def rise_analysis(explainer, model, img, target, top_k=3):
+    torch.random.manual_seed(123)
+    random.seed(123)
+    np.random.seed(123)
+
+    model = nn.Sequential(model, nn.Softmax(dim=-1))
+    model = model.eval()
+
+    for p in model.parameters():
+        p.requires_grad = False
+
+    saliency = explainer(img).cpu().numpy()
+    p, c = torch.topk(model(img), k=top_k)
+    p, c = p[0], c[0]
+
+    plt.figure(figsize=(10, 5 * top_k))
+    for k in range(top_k):
+        plt.subplot(top_k, 2, 2 * k + 1)
+        plt.axis('off')
+        plt.title('{:.2f}% {}'.format(100 * p[k], get_class_name(c[k], target)))
+        tensor_imshow(img)
+
+        plt.subplot(top_k, 2, 2 * k + 2)
+        plt.axis('off')
+        plt.title(get_class_name(c[k], target))
+        tensor_imshow(img)
+        sal = saliency[c[k]]
+        plt.imshow(sal, cmap='jet', alpha=0.5)
+        plt.colorbar(fraction=0.046, pad=0.04)
+
+    plt.show()
