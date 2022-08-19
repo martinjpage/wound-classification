@@ -74,9 +74,21 @@ def show_image(image, label, normalise=True):
     if normalise:
         image = normalise_image(image)
     plt.imshow(image.permute(1, 2, 0), cmap='gray', vmin=0, vmax=255)
-    plt.title(label)
-    plt.show()
+    # plt.title(label)
+    # plt.show()
 
+
+def tensor_imshow(inp, title=None, **kwargs):
+    """Imshow for Tensor."""
+    inp = inp.numpy().transpose((1, 2, 0))
+    # Mean and std for ImageNet
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+    inp = std * inp + mean
+    inp = np.clip(inp, 0, 1)
+    plt.imshow(inp, **kwargs)
+    if title is not None:
+        plt.title(title)
 
 def setup_gpu():
     torch.cuda.empty_cache()

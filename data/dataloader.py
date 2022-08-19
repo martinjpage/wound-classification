@@ -64,6 +64,9 @@ def create_oversampler(images_csv, target):
     df = utils.load_image_filenames(images_csv, col=target)
     unique_classes, class_counts = np.unique(df[target], return_counts=True)
     class_weights = [sum(class_counts) / c for c in class_counts]
+    if target == const.CSV_DAY_COLUMN:
+        class_map = {1: 0, 3: 1, 5: 2, 7: 3}
+        df.replace({"day": class_map}, inplace=True)
     weights = [class_weights[e] for e in df[target]]
     sampler = WeightedRandomSampler(weights, len(df[target]))
     return sampler

@@ -62,7 +62,8 @@ class ResNet(nn.Module):
         h = x.view(x.shape[0], -1)
         x = self.fc(h)
 
-        return x, h
+        # return x, h
+        return x
 
 
 class Bottleneck(nn.Module):

@@ -17,7 +17,7 @@ import wandb
 
 # Configure Experiment and Logging
 project_name = "wound_clot_classification"
-experiment_name = 'resnet50_acc_ce'
+experiment_name = 'resnet50_fscore_ce_crop_oversample'
 run_config = {
     "learning_rate": config.FOUND_LR,
     "epochs": config.EPOCHS,
@@ -31,24 +31,21 @@ run_config = {
     "architecture": config.ARCHITECTURE
 }
 
-WANDB_KEY = '5daa291a45f220cbec42e63995626bb6c5712839'
-wandb.login(key=WANDB_KEY)
-wandb.init(project=project_name, name=experiment_name, config=run_config)
 
 # Setup CPU/GPU
 device = utils.setup_gpu()
 
 # Data Paths
-image_directory = os.path.join(os. getcwd(), 'data', 'images', 'res300')
-train_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'train_set.csv')
-validation_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'val_set.csv')
-test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot', 'test_set.csv')
+image_directory = os.path.join(os. getcwd(), 'data', 'images', 'res300crop')
+train_file = os.path.join(os. getcwd(), 'data', 'data_split_clot_excl', 'train_set.csv')
+validation_file = os.path.join(os. getcwd(), 'data', 'data_split_clot_excl', 'val_set.csv')
+test_file = os.path.join(os. getcwd(), 'data', 'data_split_clot_excl', 'test_set.csv')
 
 
 # Data Loading
 trainloader = create_dataloader(images_csv=train_file, image_dir=image_directory, target=config.CSV_CLOT_COLUMN,
                                 transform=train_transformer(config.ARCHITECTURE),
-                                batch_size=config.BATCH_SIZE, shuffle=True, over_sample=False)
+                                batch_size=config.BATCH_SIZE, shuffle=False, over_sample=True)
 valloader = create_dataloader(images_csv=validation_file, image_dir=image_directory, target=config.CSV_CLOT_COLUMN,
                               transform=val_transformer(config.ARCHITECTURE),
                               batch_size=config.BATCH_SIZE, shuffle=True)
@@ -77,31 +74,41 @@ criterion = nn.CrossEntropyLoss()
 # lr_finder.plot_lr_finder(skip_start=25, skip_end=10)
 
 # Training
-# params = [
-#           {'params': model.conv1.parameters(), 'lr': config.FOUND_LR / 10},
-#           {'params': model.bn1.parameters(), 'lr': config.FOUND_LR / 10},
-#           {'params': model.layer1.parameters(), 'lr': config.FOUND_LR / 8},
-#           {'params': model.layer2.parameters(), 'lr': config.FOUND_LR / 6},
-#           {'params': model.layer3.parameters(), 'lr': config.FOUND_LR / 4},
-#           {'params': model.layer4.parameters(), 'lr': config.FOUND_LR / 2},
-#           {'params': model.fc.parameters()}
-#          ]
+params = [
+          {'params': model.conv1.parameters(), 'lr': config.FOUND_LR / 10},
+          {'params': model.bn1.parameters(), 'lr': config.FOUND_LR / 10},
+          {'params': model.layer1.parameters(), 'lr': config.FOUND_LR / 8},
+          {'params': model.layer2.parameters(), 'lr': config.FOUND_LR / 6},
+          {'params': model.layer3.parameters(), 'lr': config.FOUND_LR / 4},
+          {'params': model.layer4.parameters(), 'lr': config.FOUND_LR / 2},
+          {'params': model.fc.parameters()}
+         ]
 
 
 optimiser = optim.AdamW(model.parameters(), lr=config.FOUND_LR, weight_decay=config.WEIGHT_DECAY)
 # optimiser = optim.AdamW(params, lr=config.FOUND_LR, weight_decay=config.WEIGHT_DECAY)
 scheduler = create_scheduler(trainloader=trainloader, optimiser=optimiser)
+
+# model_name = f'{experiment_name}-lr-{config.FOUND_LR}-wd-{config.WEIGHT_DECAY}-epoch-{config.EPOCHS}-{config.SELECTION_METRIC}.pt'
+model_name = f'{experiment_name}-lrs-epoch-{config.EPOCHS}-{config.SELECTION_METRIC}.pt'
+
+
+WANDB_KEY = '5daa291a45f220cbec42e63995626bb6c5712839'
+wandb.login(key=WANDB_KEY)
+wandb.init(project=project_name, name=experiment_name, config=run_config)
 model = fit_model(dataloaders, model, criterion, optimiser, scheduler, device, epochs=config.EPOCHS,
                   selection_metric=config.SELECTION_METRIC, early_stop=config.EARYSTOP, stop_metric=config.STOP_METRIC,
                   patience=config.PATIENCE)
 wandb.finish()
 
 # Model Save
-model_name = f'{experiment_name}-lr-{config.FOUND_LR}-epoch-{config.EPOCHS}-{config.SELECTION_METRIC}.pt'
 torch.save(model.state_dict(), model_name)
 
 
 # Testing
+images, labels, probs, pred_labels = get_predictions(model, trainloader, device)
+plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
+
 images, labels, probs, pred_labels = get_predictions(model, valloader, device)
 plot_confusion_matrix(labels, pred_labels, classes=['False', 'True'])
 

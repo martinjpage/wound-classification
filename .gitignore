@@ -157,3 +157,4 @@ data/images
 egs/
 *.pt
 wandb/
+reports/
